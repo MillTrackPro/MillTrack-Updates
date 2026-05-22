@@ -1,0 +1,51 @@
+name: Update latest_version.json
+
+on:
+  release:
+    types: [published, edited]
+
+permissions:
+  contents: write
+
+jobs:
+  update-latest-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build latest_version.json from release
+        shell: bash
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+          NOTES="${{ github.event.release.name }}"
+
+          ASSET_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/MillTrack_PRO_Setup.exe"
+
+          cat > latest_version.json <<EOF
+          {
+            "version": "${VERSION}",
+            "installer_url": "${ASSET_URL}",
+            "notes": "${NOTES}"
+          }
+          EOF
+
+          cat latest_version.json
+
+      - name: Commit latest_version.json
+        shell: bash
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add latest_version.json
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Auto-update latest_version.json for ${{ github.event.release.tag_name }}"
+          git push
